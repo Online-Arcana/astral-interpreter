@@ -1,0 +1,23 @@
+{
+  "name": "astral-interpreter",
+  "version": "0.1.0",
+  "description": "LLM interpretation for astral-core calculations",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "src/interpretation/corpus/data/xml", "LICENSE"],
+  "scripts": {
+    "corpus:embed": "node scripts/embed-corpus-xml.mjs",
+    "vendor:schema": "npm --prefix vendor/openai-schema install && npm --prefix vendor/openai-schema run build",
+    "vendor:build": "npm run vendor:schema",
+    "check": "npm run corpus:embed && tsc -p tsconfig.json --noEmit",
+    "build": "npm run corpus:embed && rm -rf dist && tsc -p tsconfig.json",
+    "ci": "npm run check && npm run build"
+  },
+  "dependencies": {
+    "astral-core": "file:vendor/astral-core",
+    "openai-schema": "file:vendor/openai-schema"
+  },
+  "devDependencies": { "@types/node": "^22.15.3", "typescript": "5.9.3" }
+}
