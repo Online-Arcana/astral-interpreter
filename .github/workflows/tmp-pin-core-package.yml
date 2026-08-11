@@ -47,7 +47,8 @@ jobs:
 
           cd /tmp/astral-interpreter-consumer
           printf '{"name":"interpreter-consumer","private":true,"type":"module"}\n' > package.json
-          npm install "./$CORE_PACK_NAME" "./$INTERPRETER_PACK_NAME" --ignore-scripts >/dev/null
+          npm install "./$CORE_PACK_NAME" --ignore-scripts >/dev/null
+          npm install "./$INTERPRETER_PACK_NAME" --ignore-scripts >/dev/null
           node --input-type=module <<'NODE'
           import { randomChart } from 'astral-core';
           import { compileReviewedCorpus, prepare, reviewedCorpusOrigin } from 'astral-interpreter';
