@@ -1,8 +1,8 @@
-import { compatibilityDomains } from "astral-core";
+import { compatibilityDomains } from "astral-core/web";
 import { generatedNamePattern } from "./name.js";
 import { auditWorldviewObject, worldviewFailureMessages } from "../interpretation/corpus/worldview.js";
 import { refsValid } from "../ref/resolve.js";
-import { signs } from "astral-core";
+import { signs } from "astral-core/web";
 import { compatibilityDomain, parseCareerInterpretation, parseCompatibilityOverview, parseFinalSynthesis, parseMoneyInterpretation, parseRomanticInterpretation, parseSexualInterpretation, parseSignCompatibility, parseStrictSection, parseSystemSynthesis, } from "./parse.js";
 const pointIds = [
     "sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto",

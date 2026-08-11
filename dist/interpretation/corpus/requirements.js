@@ -1,4 +1,4 @@
-import { compatibilityDomains } from "astral-core";
+import { compatibilityDomains } from "astral-core/web";
 const bodies = [
     "sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto",
 ];

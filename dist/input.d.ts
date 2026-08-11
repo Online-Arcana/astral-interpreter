@@ -1,4 +1,4 @@
-import type { Calculation } from "astral-core";
+import type { Calculation } from "astral-core/web";
 import type { PreferredGender } from "./types/base.js";
 import type { AstralCalculation } from "./types/file.js";
 export interface Subject {

@@ -1,4 +1,4 @@
-import type { Calculation } from "astral-core";
+import type { Calculation } from "astral-core/web";
 import { buildPlan } from "./plan/build.js";
 import type { PreferredGender } from "./types/base.js";
 import type { AstralCalculation } from "./types/file.js";

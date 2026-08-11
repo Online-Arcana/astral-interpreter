@@ -1,1 +1,1 @@
-export * from "astral-core";
+export * from "astral-core/web";

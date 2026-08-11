@@ -1,4 +1,4 @@
-import type { CalcProvenance, CalcSettings, CalcWarning, Calculation, JsonRef, Zodiac } from "astral-core";
+import type { CalcProvenance, CalcSettings, CalcWarning, Calculation, JsonRef, Zodiac } from "astral-core/web";
 import type { PreferredGender } from "./base.js";
 export interface InterpretationUnit {
     id: string;

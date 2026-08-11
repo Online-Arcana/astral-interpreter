@@ -1,4 +1,4 @@
-import { compatibilityDomains } from "astral-core";
+import { compatibilityDomains } from "astral-core/web";
 import { generatedNamePattern } from "./name.js";
 import { auditWorldviewObject, worldviewFailureMessages } from "../interpretation/corpus/worldview.js";
 import type { InterpretationRun, UnitResult } from "../llm/orchestrate/types.js";
@@ -21,7 +21,7 @@ import type {
   SystemInterpretation,
 } from "../types/chart.js";
 import type { AstralCalculation } from "../types/file.js";
-import { signs } from "astral-core";
+import { signs } from "astral-core/web";
 import {
   compatibilityDomain,
   parseCareerInterpretation,

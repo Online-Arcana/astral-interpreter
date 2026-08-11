@@ -381,8 +381,8 @@ var preferredGenderOf = (value) => value.preferredGender ?? "male";
 
 // src/types/astro.ts
 var astro_exports = {};
-__reExport(astro_exports, astral_core_star);
-import * as astral_core_star from "astral-core";
+__reExport(astro_exports, web_star);
+import * as web_star from "astral-core/web";
 
 // src/types/index.ts
 __reExport(types_exports, astro_exports);
@@ -665,7 +665,7 @@ var compatibilityDomain = (domain2, overview, signs5) => ({
 });
 
 // src/chart/assemble.ts
-import { compatibilityDomains as compatibilityDomains2 } from "astral-core";
+import { compatibilityDomains as compatibilityDomains2 } from "astral-core/web";
 
 // src/chart/name.ts
 var generatedNamePattern = /^[\p{L}\p{N}]+-[\p{L}\p{N}]+-[\p{L}\p{N}]+$/u;
@@ -909,7 +909,7 @@ var refsValid = (root2, refs3, allowed) => refs3.every((ref2) => {
 });
 
 // src/chart/assemble.ts
-import { signs as signs2 } from "astral-core";
+import { signs as signs2 } from "astral-core/web";
 var pointIds2 = [
   "sun",
   "moon",
@@ -1170,7 +1170,7 @@ var assembleChart = (calculation, run, options) => {
 };
 
 // src/interpretation/corpus/requirements.ts
-import { compatibilityDomains as compatibilityDomains3 } from "astral-core";
+import { compatibilityDomains as compatibilityDomains3 } from "astral-core/web";
 var bodies = [
   "sun",
   "moon",
@@ -4507,7 +4507,7 @@ var parseSection = (value) => {
 var sectionShape = (name) => strictShape(name, sectionSchema, parseSection);
 
 // src/llm/schema/chart.ts
-import { signs as signs4 } from "astral-core";
+import { signs as signs4 } from "astral-core/web";
 var refs2 = (allowed) => allowed.length === 0 ? list(text3(), 0, 0) : list(textEnum(allowed), 1);
 var sectionProperties = (allowed) => ({
   status: {

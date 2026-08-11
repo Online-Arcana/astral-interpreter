@@ -1,5 +1,5 @@
 import { parseCareerInterpretation, parseCompatibilityOverview, parseCrossSystem, parseFinalSynthesis, parseMoneyInterpretation, parseRomanticInterpretation, parseSexualInterpretation, parseSignCompatibility, parseStrictSection, parseSystemSynthesis, } from "../../chart/parse.js";
-import { signs } from "astral-core";
+import { signs } from "astral-core/web";
 import { list, literal, nullableText, object, strictShape, text, textEnum, } from "./build.js";
 const refs = (allowed) => allowed.length === 0
     ? list(text(), 0, 0)

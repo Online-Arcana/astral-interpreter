@@ -13,7 +13,7 @@ import {
 import type { Sign } from "../../types/astro.js";
 import type { JsonRef } from "../../types/base.js";
 import type { InterpretationUnit } from "../../types/file.js";
-import { signs } from "astral-core";
+import { signs } from "astral-core/web";
 import type { StrictShape } from "../orchestrate/types.js";
 import {
   list,
