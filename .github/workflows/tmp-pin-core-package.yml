@@ -32,7 +32,7 @@ jobs:
 
           rm -rf /tmp/astral-interpreter-consumer
           mkdir -p /tmp/astral-interpreter-consumer
-          CORE_PACK_JSON="$(npm --prefix vendor/astral-core pack --json --pack-destination /tmp/astral-interpreter-consumer)"
+          CORE_PACK_JSON="$(cd vendor/astral-core && npm pack --json --pack-destination /tmp/astral-interpreter-consumer)"
           CORE_PACK_NAME="$(printf '%s' "$CORE_PACK_JSON" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>process.stdout.write(JSON.parse(s)[0].filename))')"
           INTERPRETER_PACK_JSON="$(npm pack --json --pack-destination /tmp/astral-interpreter-consumer)"
           INTERPRETER_PACK_NAME="$(printf '%s' "$INTERPRETER_PACK_JSON" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>process.stdout.write(JSON.parse(s)[0].filename))')"
