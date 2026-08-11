@@ -1,13 +1,25 @@
 import { build } from "esbuild";
 
-await build({
-  entryPoints: ["src/index.ts"],
-  outfile: "dist/index.js",
+const shared = {
   bundle: true,
   format: "esm",
-  platform: "node",
-  target: "node22",
   external: ["astral-core"],
   sourcemap: true,
   logLevel: "info",
+};
+
+await build({
+  ...shared,
+  entryPoints: ["src/index.ts"],
+  outfile: "dist/index.js",
+  platform: "node",
+  target: "node22",
+});
+
+await build({
+  ...shared,
+  entryPoints: ["src/web.ts"],
+  outfile: "dist/web.js",
+  platform: "browser",
+  target: "es2023",
 });
