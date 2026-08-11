@@ -165,8 +165,7 @@ var readConfig = (env) => ({
 });
 
 // src/plan/build.ts
-import { compatibilityDomains } from "astral-core";
-import { signs } from "astral-core";
+import { compatibilityDomains, signs } from "astral-core/web";
 var pointIds = [
   "sun",
   "moon",

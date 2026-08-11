@@ -1,5 +1,4 @@
-import { compatibilityDomains } from "astral-core";
-import { signs } from "astral-core";
+import { compatibilityDomains, signs } from "astral-core/web";
 const pointIds = [
     "sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto",
     "north_node_true", "south_node_true", "north_node_mean", "south_node_mean",
