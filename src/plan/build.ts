@@ -7,8 +7,7 @@ import type {
   ZodiacCalculation,
 } from "../types/astro.js";
 import type { InterpretationPlan, InterpretationUnit } from "../types/file.js";
-import { compatibilityDomains } from "astral-core";
-import { signs } from "astral-core";
+import { compatibilityDomains, signs } from "astral-core/web";
 
 const pointIds = [
   "sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto",
