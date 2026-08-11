@@ -1,0 +1,42 @@
+name: tmp-rerun2
+on:
+  push:
+    branches: [agent/split-modules]
+    paths: [.github/workflows/tmp-rerun2.yml]
+permissions:
+  contents: write
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/split-modules
+          fetch-depth: 0
+      - uses: actions/checkout@v5
+        with:
+          repository: Online-Arcana/astrology
+          ref: 86fadaebccb497930f6a38a4a8f5c4c15b2c2ff6
+          path: _astrology
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Run corrected split
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('.github/workflows/tmp-split.yml').read_text()
+          marker = '      - name: Build interpreter tree\n        run: |\n'
+          block = src.split(marker, 1)[1]
+          lines = [line[10:] if line.startswith('          ') else line for line in block.splitlines()]
+          script = '\n'.join(lines) + '\n'
+          script = script.replace('mkdir -p src/types src/plan src/chart', 'mkdir -p src/types src/plan scripts')
+          needle = "p.write_text(s)\nPY\ncat > src/chart/name.ts"
+          patch = "p.write_text(s)\np=Path('src/llm/orchestrate/plan.ts')\ns=p.read_text().replace('import { generatedNamePattern } from \\\"../../file/invariants.js\\\";', 'import { generatedNamePattern } from \\\"../../chart/name.js\\\";')\np.write_text(s)\nPY\ncat > src/chart/name.ts"
+          if needle not in script:
+              raise SystemExit('plan patch marker not found')
+          script = script.replace(needle, patch, 1)
+          script = script.replace('git -C vendor/astral-core checkout origin/agent/split-modules', 'git -C vendor/astral-core checkout origin/agent/split-modules\ngit -C vendor/astral-core submodule update --init --recursive\nnpm --prefix vendor/astral-core run vendor:build\nnpm --prefix vendor/astral-core install --ignore-scripts\nnpm --prefix vendor/astral-core run build')
+          Path('/tmp/interpreter-split.sh').write_text(script)
+          PY
+          bash /tmp/interpreter-split.sh
