@@ -1,0 +1,61 @@
+name: tmp-split-runv2
+on:
+  push:
+    branches: [agent/split-modules]
+    paths: [.github/workflows/tmp-split-runv2.yml]
+permissions:
+  contents: write
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/split-modules
+          submodules: recursive
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Split orchestration
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('src/llm/orchestrate/run-v2.ts')
+          lines=path.read_text().splitlines()
+          if not lines[25].startswith('interface Counters'):
+              raise SystemExit('unexpected run-v2 layout before Counters')
+          if not lines[373].startswith('const validateResult'):
+              raise SystemExit('unexpected run-v2 layout before recovery')
+          if not lines[551].startswith('const runCore'):
+              raise SystemExit('unexpected run-v2 layout before runCore')
+
+          header='\n'.join(lines[:25])+'\n\n'
+          execute='\n'.join(lines[25:373])+'\n'
+          for name in ['Counters','paidAttempts','count','activeCopy','localConversationId','safeAudit','executeUnit']:
+              execute=execute.replace(f'interface {name}',f'export interface {name}',1) if name=='Counters' else execute.replace(f'const {name}',f'export const {name}',1)
+          Path('src/llm/orchestrate/execute.ts').write_text(header+execute)
+
+          recovery='\n'.join(lines[373:551])+'\n'
+          recovery_header=header+'import { localConversationId, safeAudit } from "./execute.js";\n\n'
+          for name in ['validateResult','restore','restoreStaged','emptyRecovery','laneCheckpoint','recoveredPlans','without','deterministicUnit','emergencyRun']:
+              recovery=recovery.replace(f'const {name}',f'export const {name}',1)
+          Path('src/llm/orchestrate/recovery.ts').write_text(recovery_header+recovery)
+
+          main='\n'.join(lines[551:])+'\n'
+          imports=(
+              'import { activeCopy, count, executeUnit, paidAttempts, type Counters } from "./execute.js";\n'
+              'import { emptyRecovery, emergencyRun, laneCheckpoint, recoveredPlans, restore, restoreStaged, without } from "./recovery.js";\n\n'
+          )
+          path.write_text(header+imports+main)
+          PY
+          npm run vendor:build
+          npm ci
+          npm run check
+          npm run build
+          npm test
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/llm/orchestrate dist
+          git commit -m "Split interpreter execution and recovery"
+          git push origin HEAD:agent/split-modules
