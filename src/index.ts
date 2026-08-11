@@ -6,6 +6,7 @@ export * from "./chart/parse.js";
 export * from "./chart/assemble.js";
 export * from "./interpretation/corpus/compile.js";
 export * from "./interpretation/corpus/types.js";
+export * from "./interpretation/corpus/data/index.js";
 export * from "./interpretation/map/provider.js";
 export * from "./interpretation/map/builtin.js";
 export * from "./llm/openaiSchema.js";
