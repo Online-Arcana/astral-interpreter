@@ -1,0 +1,147 @@
+name: tmp-plan-split
+on:
+  push:
+    branches: [agent/split-modules]
+    paths: [.github/workflows/tmp-plan-split.yml]
+permissions:
+  contents: write
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/split-modules
+          submodules: recursive
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Split interpretation planning by concern
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/llm/orchestrate/plan.ts')
+          source = path.read_text()
+
+          def part(start, end=None):
+              a = source.index(start)
+              b = len(source) if end is None else source.index(end, a)
+              return source[a:b].strip() + '\n'
+
+          evidence_body = part('const root =', 'const human =')
+          for name in ['root', 'sources', 'sourceRefsFor']:
+              evidence_body = evidence_body.replace(f'const {name}', f'export const {name}', 1)
+          evidence = '''import { resolveRef, refsValid } from "../../ref/resolve.js";
+          import type { JsonRef } from "../../types/base.js";
+          import type { AstralCalculation, InterpretationUnit } from "../../types/file.js";
+
+          interface SourceValue {
+            ref: JsonRef;
+            value: unknown;
+          }
+
+          '''.replace('          ', '') + evidence_body
+
+          call_body = part('const human =', 'const fallbackCall =')
+          for name in ['human', 'task', 'correctionInstruction', 'lexicon', 'route', 'acceptedNarratives']:
+              call_body = call_body.replace(f'const {name}', f'export const {name}', 1)
+          call = '''import type { InterpretationUnit } from "../../types/file.js";
+          import type { NarrativeEntry } from "../audit/field.js";
+          import type { InterpretationCall, ReasoningEffort } from "./types.js";
+
+          interface Route {
+            kind: InterpretationCall["kind"];
+            effort?: ReasoningEffort;
+            tokens: number;
+          }
+
+          '''.replace('          ', '') + call_body
+
+          fallback_body = part('const fallbackCall =', 'const substantiveCalls =')
+          for name in ['noSourceFallback', 'semanticMapFor', 'sourceAwareFallback']:
+              fallback_body = fallback_body.replace(f'const {name}', f'export const {name}', 1)
+          fallback = '''import { validateInterpretationMap } from "../../interpretation/corpus/compile.js";
+          import type { InterpretationMap } from "../../interpretation/corpus/types.js";
+          import type { InterpretationSemanticProvider } from "../../interpretation/map/provider.js";
+          import type { JsonRef } from "../../types/base.js";
+          import type { AstralCalculation, InterpretationUnit } from "../../types/file.js";
+          import { reconstructUnit } from "../reconstruct/reconstruct.js";
+          import { shapeForUnit } from "../schema/chart.js";
+          import { human, route } from "./call.js";
+          import { sourceRefsFor } from "./evidence.js";
+          import type { InterpretationCall, UnitResult } from "./types.js";
+
+          '''.replace('          ', '') + fallback_body
+
+          calls_body = part('const substantiveCalls =', 'const recoveryAwareCalls =')
+          calls = '''import { generatedNamePattern } from "../../chart/name.js";
+          import { semanticPropositionTexts } from "../../interpretation/map/compile.js";
+          import { decomposeInterpretationUnit } from "../../interpretation/map/decompose.js";
+          import type { InterpretationSemanticProvider } from "../../interpretation/map/provider.js";
+          import { serialiseInterpretationPrompt } from "../../interpretation/prompt/serialise.js";
+          import type { JsonRef } from "../../types/base.js";
+          import type { AstralCalculation } from "../../types/file.js";
+          import type { FieldProfile } from "../audit/field.js";
+          import { fieldProfiles } from "../audit/profiles.js";
+          import { auditStructured } from "../audit/structured.js";
+          import { object, strictShape, text } from "../schema/build.js";
+          import { shapeForUnit } from "../schema/chart.js";
+          import { acceptedNarratives, correctionInstruction, human, lexicon, route, task } from "./call.js";
+          import { sources } from "./evidence.js";
+          import { noSourceFallback, semanticMapFor } from "./fallback.js";
+          import { sectionPrompt } from "./prompt.js";
+          import type { InterpretationCall, UnitResult } from "./types.js";
+
+          '''.replace('          ', '') + calls_body
+
+          plan_body = part('const recoveryAwareCalls =')
+          plan = '''import type { Config } from "../../config.js";
+          import { generatedNamePattern } from "../../chart/name.js";
+          import type { InterpretationSemanticProvider } from "../../interpretation/map/provider.js";
+          import type { AstralCalculation } from "../../types/file.js";
+          import { interpretationCalls } from "./calls.js";
+          import { root } from "./evidence.js";
+          import { sourceAwareFallback } from "./fallback.js";
+          import { runInterpretation } from "./run.js";
+          import type {
+            InterpretationCall,
+            InterpretationRecovery,
+            InterpretationRun,
+            RunHooks,
+            SchemaClientFactory,
+            UnitResult,
+          } from "./types.js";
+
+          export const promptCatalogue = "astral-prompts/1.4.0" as const;
+          export const structuredOutputCatalogue = "astral-structured-output/1.1.0" as const;
+          export const nlpAuditProfile = "astral-nlp-audit/1.2.0" as const;
+          export const modelRoutingProfile = "astral-model-routing/1.2.0" as const;
+
+          export interface PlanInterpretationResult {
+            run: InterpretationRun;
+            generatedName: string | null;
+          }
+
+          export { interpretationCalls } from "./calls.js";
+
+          '''.replace('          ', '') + plan_body
+
+          Path('src/llm/orchestrate/evidence.ts').write_text(evidence)
+          Path('src/llm/orchestrate/call.ts').write_text(call)
+          Path('src/llm/orchestrate/fallback.ts').write_text(fallback)
+          Path('src/llm/orchestrate/calls.ts').write_text(calls)
+          path.write_text(plan)
+          PY
+          npm run vendor:build
+          npm install --package-lock-only --ignore-scripts
+          npm install --ignore-scripts
+          npm run check
+          npm run build
+          npm test
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/llm/orchestrate package-lock.json
+          git commit -m "Split interpretation planning by concern"
+          git push origin HEAD:agent/split-modules
