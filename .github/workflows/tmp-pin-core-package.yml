@@ -20,7 +20,7 @@ jobs:
         run: |
           set -euo pipefail
           git -C vendor/astral-core fetch origin agent/split-modules
-          git -C vendor/astral-core checkout origin/agent/split-modules
+          git -C vendor/astral-core checkout --detach FETCH_HEAD
           git -C vendor/astral-core submodule update --init --recursive
           npm run vendor:build
           npm ci
