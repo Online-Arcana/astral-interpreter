@@ -1,0 +1,66 @@
+name: tmp-eliminate-core-root
+
+on:
+  push:
+    branches: [agent/split-modules]
+    paths: [.github/workflows/tmp-eliminate-core-root.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/split-modules
+          fetch-depth: 0
+          submodules: recursive
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+      - name: Remove Node-root core imports from interpreter
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          changed=[]
+          for p in Path('src').rglob('*.ts'):
+              s=p.read_text()
+              n=s.replace('from "astral-core";', 'from "astral-core/web";')
+              n=n.replace("from 'astral-core';", "from 'astral-core/web';")
+              if n != s:
+                  p.write_text(n)
+                  changed.append(str(p))
+          print('Changed core imports:')
+          print('\n'.join(changed) if changed else '(none)')
+          if not changed:
+              raise SystemExit('Expected at least one bare astral-core import to replace')
+          PY
+
+          npm run vendor:build
+          npm ci
+          npm run check
+          npm run build
+          npm test
+
+          if grep -R -n -F 'from "astral-core"' src dist --include='*.ts' --include='*.js' --include='*.d.ts'; then
+            echo 'Bare astral-core import remains'
+            exit 1
+          fi
+          if grep -R -n -F "from 'astral-core'" src dist --include='*.ts' --include='*.js' --include='*.d.ts'; then
+            echo 'Bare astral-core import remains'
+            exit 1
+          fi
+          grep -R -n -F 'astral-core/web' dist --include='*.js' | head -20
+
+          git restore --source=HEAD --staged --worktree .github/workflows || true
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src
+          git add -f dist
+          git commit -m "Keep interpreter on browser-safe core API"
+          git pull --rebase origin agent/split-modules
+          git push origin HEAD:agent/split-modules
