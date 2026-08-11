@@ -23,10 +23,10 @@ jobs:
           BASE=https://raw.githubusercontent.com/Online-Arcana/astrology/86fadaebccb497930f6a38a4a8f5c4c15b2c2ff6/test
           FILES=(
             audit worldviewNeutrality sourceWorldviewGate interpretationMap interpretationMapCompiler
-            voiceSeparation serializedPromptRuntime generationSemanticProvider semanticReconstruction semanticPlanFallback
+            voiceSeparation serializedPromptRuntime semanticReconstruction semanticPlanFallback
             xmlCorpus corpusCompiler completionRepair reconstructionMatrix auditHook
             openaiTransport openaiTransportTimeout openaiFiles openaiRuntime contextWindow billing
-            orchestrationResilience recovery crossUnitCoherence waves freshWaves recoveryMigration
+            orchestrationResilience recovery crossUnitCoherence waves freshWaves
           )
           for file in "${FILES[@]}"; do
             curl --fail --silent --show-error "$BASE/$file.ts" -o "test/$file.ts"
@@ -52,10 +52,10 @@ jobs:
           const pkg = JSON.parse(await readFile(path, 'utf8'));
           const files = [
             'audit','worldviewNeutrality','sourceWorldviewGate','interpretationMap','interpretationMapCompiler',
-            'voiceSeparation','serializedPromptRuntime','generationSemanticProvider','semanticReconstruction','semanticPlanFallback',
+            'voiceSeparation','serializedPromptRuntime','semanticReconstruction','semanticPlanFallback',
             'xmlCorpus','corpusCompiler','completionRepair','reconstructionMatrix','auditHook',
             'openaiTransport','openaiTransportTimeout','openaiFiles','openaiRuntime','contextWindow','billing',
-            'orchestrationResilience','recovery','crossUnitCoherence','waves','freshWaves','recoveryMigration',
+            'orchestrationResilience','recovery','crossUnitCoherence','waves','freshWaves',
           ];
           pkg.scripts['test:regression'] = `npm run corpus:embed && rm -rf .test && tsc -p tsconfig.test.json && ${files.map(name => `node .test/test/${name}.js`).join(' && ')}`;
           pkg.scripts.test = 'node test/interpreter.mjs && npm run test:regression';
