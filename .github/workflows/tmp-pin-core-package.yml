@@ -16,17 +16,18 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-      - name: Pin packageable core and validate interpreter
+      - name: Pin core and validate interpreter package
         run: |
           set -euo pipefail
-          git -C vendor/astral-core fetch origin agent/split-modules
-          git -C vendor/astral-core checkout --detach FETCH_HEAD
+          git -C vendor/astral-core fetch origin b69341e4eda822d22a07162bd98d2d498375ae59
+          git -C vendor/astral-core checkout --detach b69341e4eda822d22a07162bd98d2d498375ae59
           git -C vendor/astral-core submodule update --init --recursive
           npm run vendor:build
           npm ci
           npm run check
           npm run build
           npm test
+          rm -rf /tmp/astral-interpreter-consumer
           mkdir -p /tmp/astral-interpreter-consumer
           npm pack --pack-destination /tmp/astral-interpreter-consumer
           tar -tzf /tmp/astral-interpreter-consumer/astral-interpreter-0.1.0.tgz > /tmp/astral-interpreter-package.txt
@@ -44,5 +45,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add vendor/astral-core
-          git commit -m "Pin packageable astral-core" || true
+          git commit -m "Pin astral-core" || true
           git push origin HEAD:agent/split-modules
