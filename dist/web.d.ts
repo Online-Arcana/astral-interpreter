@@ -26,4 +26,5 @@ export * from "./billing/bill.js";
 export * from "./billing/openaiCosts.js";
 export * from "./progress/work.js";
 export * from "./progress/tracker.js";
+export * from "./ref/resolve.js";
 //# sourceMappingURL=web.d.ts.map
