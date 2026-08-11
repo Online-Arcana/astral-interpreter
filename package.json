@@ -9,11 +9,13 @@
   "files": ["dist", "src/interpretation/corpus/data/xml", "LICENSE"],
   "scripts": {
     "corpus:embed": "node scripts/embed-corpus-xml.mjs",
+    "vendor:core": "npm --prefix vendor/astral-core run vendor:build && npm --prefix vendor/astral-core install --ignore-scripts && npm --prefix vendor/astral-core run build",
     "vendor:schema": "npm --prefix vendor/openai-schema install && npm --prefix vendor/openai-schema run build",
-    "vendor:build": "npm run vendor:schema",
+    "vendor:build": "npm run vendor:core && npm run vendor:schema",
     "check": "npm run corpus:embed && tsc -p tsconfig.json --noEmit",
     "build": "npm run corpus:embed && rm -rf dist && tsc -p tsconfig.json",
-    "ci": "npm run check && npm run build"
+    "test": "node test/interpreter.mjs",
+    "ci": "npm run check && npm run build && npm test"
   },
   "dependencies": {
     "astral-core": "file:vendor/astral-core",
