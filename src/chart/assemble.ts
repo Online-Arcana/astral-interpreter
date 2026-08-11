@@ -1,4 +1,4 @@
-import { compatibilityDomains } from "astral-core";
+import { compatibilityDomains, signs } from "astral-core/web";
 import { generatedNamePattern } from "./name.js";
 import { auditWorldviewObject, worldviewFailureMessages } from "../interpretation/corpus/worldview.js";
 import type { InterpretationRun, UnitResult } from "../llm/orchestrate/types.js";
@@ -21,7 +21,6 @@ import type {
   SystemInterpretation,
 } from "../types/chart.js";
 import type { AstralCalculation } from "../types/file.js";
-import { signs } from "astral-core";
 import {
   compatibilityDomain,
   parseCareerInterpretation,
@@ -172,8 +171,8 @@ const system = (calculation: AstralCalculation, values: Reader): SystemInterpret
     },
     eclipses: {
       atBirth: section(values, `${zodiac}.eclipse.at-birth`),
-      prenatalSolar: section(values, `${zodiac}.eclipse.prenatal-solar`),
-      prenatalLunar: section(values, `${zodiac}.eclipse.prenatal-lunar`),
+      prenatalSolar: section(values, `${zodiac}.eclipse.prenatalSolar`, null, [systemRef("eclipses/prenatalSolar")]),
+      prenatalLunar: section(values, `${zodiac}.eclipse.prenatalLunar`, null, [systemRef("eclipses/prenatalLunar")]),
     },
     rulershipAndDignity: section(values, `${zodiac}.rulership-dignity`),
     chartBalance: section(values, `${zodiac}.chart-balance`),
