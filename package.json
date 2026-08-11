@@ -6,7 +6,8 @@
   "private": true,
   "license": "MIT",
   "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
-  "files": ["dist", "src/interpretation/corpus/data/xml", "vendor", "LICENSE"],
+  "files": ["dist", "src/interpretation/corpus/data/xml", "LICENSE"],
+  "bundleDependencies": ["astral-core", "openai-schema"],
   "scripts": {
     "corpus:embed": "node scripts/embed-corpus-xml.mjs",
     "vendor:core": "npm --prefix vendor/astral-core run vendor:build && npm --prefix vendor/astral-core install --ignore-scripts && npm --prefix vendor/astral-core run build",
