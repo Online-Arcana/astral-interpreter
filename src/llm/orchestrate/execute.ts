@@ -2,7 +2,7 @@ import type { Config } from "../../config.js";
 import { AdaptiveLimiter } from "./rateLimit.js";
 import { snapshotInput, type InterpretationSnapshot } from "./snapshot.js";
 import { failKind, partial } from "./failure.js";
-import { repairUnit, reviewAudit, safeAudit } from "./repair.js";
+import { repairUnit, reviewAudit, safeAudit as repairSafeAudit } from "./repair.js";
 import { conversation, paidAttempts, type Counters } from "./session.js";
 import type {
   ActiveInterpretationUnit,
@@ -129,7 +129,7 @@ export const executeUnit = async (options: ExecutionOptions): Promise<UnitResult
       return repairUnit(options, candidates, context, attempt, selectedModel, correction);
     }
 
-    const audited = await reviewAudit(options, safeAudit(options, output, context));
+    const audited = await reviewAudit(options, repairSafeAudit(options, output, context));
     candidates.push(audited.value);
     if (audited.valid) {
       const result: UnitResult<object> = { id: options.unit.id, value: audited.value, attempts: attempt, model: selectedModel };
@@ -163,6 +163,12 @@ export const executeUnit = async (options: ExecutionOptions): Promise<UnitResult
   const context: UnitContext = { calculation: options.calculation, earlier: options.earlier, correction };
   return repairUnit(options, candidates, context, paidAttempts, lastModel, correction);
 };
+
+export const safeAudit = (
+  unit: InterpretationCall,
+  value: object,
+  context: UnitContext,
+) => repairSafeAudit({ unit }, value, context);
 
 export { repairUnit as reconstructionResult } from "./repair.js";
 export { activeCopy, conversation, count, localConversationId, paidAttempts } from "./session.js";
