@@ -1,3 +1,4 @@
+# Revalidate after orchestration compatibility repair.
 name: tmp-pin-core-package
 on:
   push:
