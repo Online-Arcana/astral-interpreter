@@ -18,6 +18,8 @@ export * from "./llm/schema/section.js";
 export * from "./llm/schema/chart.js";
 export * from "./llm/orchestrate/index.js";
 export * from "./llm/orchestrate/plan.js";
+export * from "./llm/orchestrate/snapshot.js";
+export * from "./llm/orchestrate/diagnostics.js";
 export * from "./billing/types.js";
 export * from "./billing/pricing.js";
 export * from "./billing/bill.js";
