@@ -16,15 +16,12 @@ var __copyProps = (to, from, except, desc) => {
 };
 var __reExport = (target, mod, secondTarget) => (__copyProps(target, mod, "default"), secondTarget && __copyProps(secondTarget, mod, "default"));
 
-// src/index.ts
-var index_exports = {};
-__export(index_exports, {
+// src/web.ts
+var web_exports = {};
+__export(web_exports, {
   BillCollector: () => BillCollector,
-  BillStore: () => BillStore,
-  JobStore: () => JobStore,
   OpenAITransportError: () => OpenAITransportError,
   ProgressTracker: () => ProgressTracker,
-  TemporaryJobStore: () => TemporaryJobStore,
   agnosticNeutrality: () => agnosticNeutrality,
   assembleChart: () => assembleChart,
   auditField: () => auditField,
@@ -107,8 +104,6 @@ __export(index_exports, {
   snapshotTokenEstimate: () => snapshotTokenEstimate,
   strictShape: () => strictShape,
   structuredOutputCatalogue: () => structuredOutputCatalogue,
-  temporaryJobIdPattern: () => temporaryJobIdPattern,
-  temporaryJobSchema: () => temporaryJobSchema,
   text: () => text3,
   textEnum: () => textEnum,
   unwantedExamples: () => unwantedExamples,
@@ -388,8 +383,8 @@ import * as astral_core_star from "astral-core";
 // src/types/index.ts
 __reExport(types_exports, astro_exports);
 
-// src/index.ts
-__reExport(index_exports, types_exports);
+// src/web.ts
+__reExport(web_exports, types_exports);
 
 // src/chart/parse.ts
 var sectionKeys = [
@@ -1000,10 +995,10 @@ var reader = (calculation, run) => {
   };
   return {
     result,
-    value: (id, parse3) => {
+    value: (id, parse2) => {
       const unit2 = plan.get(id);
       if (!unit2) throw new Error(`Interpretation unit ${id} is not in the plan`);
-      const parsed3 = parse3(result(id).value);
+      const parsed3 = parse2(result(id).value);
       if (!refsValid(root2, sourceRefs(parsed3, id), new Set(unit2.allowedSourceRefs))) {
         throw new Error(`Interpretation unit ${id} contains unresolved, unavailable or unpermitted source references`);
       }
@@ -2489,7 +2484,7 @@ function text2(value) {
   return null;
 }
 function pause(ms) {
-  return new Promise((resolve2) => setTimeout(resolve2, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 function safeName(name) {
   const clean2 = name.replace(/[^a-zA-Z0-9_-]/gu, "_").slice(0, 64);
@@ -2756,7 +2751,7 @@ var reply = (source, body) => {
 };
 var json = (source, value) => reply(source, JSON.stringify(value));
 var abortError = (signal) => signal.reason ?? new Error("OpenAI request was aborted");
-var pause2 = (ms, signal) => new Promise((resolve2, reject) => {
+var pause2 = (ms, signal) => new Promise((resolve, reject) => {
   if (signal?.aborted) {
     reject(abortError(signal));
     return;
@@ -2778,7 +2773,7 @@ var pause2 = (ms, signal) => new Promise((resolve2, reject) => {
       "abort",
       onAbort
     );
-    resolve2();
+    resolve();
   }, ms);
   signal?.addEventListener(
     "abort",
@@ -4473,10 +4468,10 @@ var literal = (value) => ({
   type: "string",
   const: value
 });
-var strictShape = (name, schema2, parse3) => ({
+var strictShape = (name, schema2, parse2) => ({
   name,
   schema: schema2,
-  ...parse3 === void 0 ? {} : { parse: parse3 }
+  ...parse2 === void 0 ? {} : { parse: parse2 }
 });
 
 // src/llm/schema/section.ts
@@ -5561,7 +5556,7 @@ var retryAfter = (cause) => {
   const candidate = value["retryAfterMs"];
   return typeof candidate === "number" && Number.isFinite(candidate) && candidate >= 0 ? candidate : null;
 };
-var pause3 = (ms) => new Promise((resolve2) => setTimeout(resolve2, ms));
+var pause3 = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 var AdaptiveLimiter = class {
   #maximum;
   #effective;
@@ -5590,7 +5585,7 @@ var AdaptiveLimiter = class {
       this.#active += 1;
       return;
     }
-    await new Promise((resolve2) => this.#waiting.push(resolve2));
+    await new Promise((resolve) => this.#waiting.push(resolve));
     this.#active += 1;
   }
   #release() {
@@ -6561,9 +6556,9 @@ var ProgressTracker = class {
     this.#status = "completed";
     return this.snapshot(nowMs);
   }
-  fail(code2, message, nowMs) {
+  fail(code, message, nowMs) {
     this.#status = "failed";
-    this.#error = { code: code2, message };
+    this.#error = { code, message };
     return this.snapshot(nowMs);
   }
   snapshot(nowMs) {
@@ -7354,76 +7349,6 @@ var billingSummary = (values, latest = 10) => {
   };
 };
 
-// src/billing/store.ts
-import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
-var billName = (id) => `${id.replaceAll(/[^A-Za-z0-9_-]/gu, "_")}.json`;
-var parseBill = (text4) => {
-  try {
-    const value = JSON.parse(text4);
-    return value.schema === "astral-bill/1.0.0" && typeof value.id === "string" ? value : null;
-  } catch {
-    return null;
-  }
-};
-var BillStore = class {
-  #dir;
-  #live = /* @__PURE__ */ new Map();
-  constructor(dir) {
-    if (dir.trim().length === 0) throw new Error("Billing directory is required");
-    this.#dir = dir;
-  }
-  live(bill) {
-    this.#live.set(bill.id, bill);
-  }
-  removeLive(id) {
-    this.#live.delete(id);
-  }
-  liveBills() {
-    return [...this.#live.values()].map((bill) => structuredClone(bill));
-  }
-  async save(bill) {
-    await mkdir(this.#dir, { recursive: true });
-    const path = join(this.#dir, billName(bill.id));
-    const temporary = `${path}.${process.pid}.${Date.now()}.tmp`;
-    await writeFile(temporary, `${JSON.stringify(bill, null, 2)}
-`, "utf8");
-    await rename(temporary, path);
-    this.#live.delete(bill.id);
-  }
-  async get(id) {
-    const live = this.#live.get(id);
-    if (live !== void 0) return structuredClone(live);
-    try {
-      return parseBill(await readFile(join(this.#dir, billName(id)), "utf8"));
-    } catch {
-      return null;
-    }
-  }
-  async list() {
-    let names;
-    try {
-      names = await readdir(this.#dir);
-    } catch {
-      names = [];
-    }
-    const saved = await Promise.all(names.filter((name) => name.endsWith(".json")).map(async (name) => {
-      try {
-        return parseBill(await readFile(join(this.#dir, name), "utf8"));
-      } catch {
-        return null;
-      }
-    }));
-    const merged = /* @__PURE__ */ new Map();
-    for (const bill of saved) if (bill !== null) merged.set(bill.id, bill);
-    for (const bill of this.#live.values()) merged.set(bill.id, structuredClone(bill));
-    return [...merged.values()].sort((left, right) => right.startedAt.localeCompare(left.startedAt));
-  }
-  async summary() {
-    return billingSummary(await this.list());
-  }
-};
-
 // src/billing/openaiCosts.ts
 var object3 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
 var fetchOpenAICosts = async (adminKey, startTime, endTime = null, fetcher = globalThis.fetch.bind(globalThis)) => {
@@ -7471,227 +7396,6 @@ var fetchOpenAICosts = async (adminKey, startTime, endTime = null, fetcher = glo
   return result;
 };
 
-// src/job/store.ts
-var JobStore = class {
-  #ttlMs;
-  #jobs = /* @__PURE__ */ new Map();
-  constructor(ttlSeconds) {
-    if (!Number.isFinite(ttlSeconds) || ttlSeconds < 1) throw new Error("Job TTL must be positive");
-    this.#ttlMs = ttlSeconds * 1e3;
-  }
-  put(id, progress, result, nowMs) {
-    const record11 = { id, progress, result, expiresAt: nowMs + this.#ttlMs };
-    this.#jobs.set(id, record11);
-    return record11;
-  }
-  get(id, nowMs) {
-    this.sweep(nowMs);
-    return this.#jobs.get(id) ?? null;
-  }
-  sweep(nowMs) {
-    let removed = 0;
-    for (const [id, record11] of this.#jobs) {
-      if (record11.expiresAt <= nowMs) {
-        this.#jobs.delete(id);
-        removed += 1;
-      }
-    }
-    return removed;
-  }
-};
-
-// src/job/recovery.ts
-import { randomBytes } from "node:crypto";
-import {
-  mkdir as mkdir2,
-  readFile as readFile2,
-  readdir as readdir2,
-  rename as rename2,
-  rm,
-  writeFile as writeFile2
-} from "node:fs/promises";
-import { resolve } from "node:path";
-var temporaryJobSchema = "astral-temporary-job/1.0.0";
-var temporaryJobIdPattern = /^[0-9a-f]{8}$/u;
-var rec3 = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
-var code = (cause) => {
-  if (!rec3(cause)) return null;
-  const value = cause["code"];
-  return typeof value === "string" ? value : null;
-};
-var iso2 = (ms) => new Date(ms).toISOString();
-var idFor = () => randomBytes(4).toString("hex");
-var encode = (record11) => {
-  const value = JSON.stringify(record11);
-  if (value === void 0) throw new Error("Temporary job state must be JSON-serialisable");
-  return value;
-};
-var withId = (progress, id) => ({
-  ...progress,
-  jobId: id
-});
-var parse2 = (source, expectedId) => {
-  const value = JSON.parse(source);
-  if (!rec3(value)) throw new Error("Temporary job record must be an object");
-  if (value["schema"] !== temporaryJobSchema) throw new Error("Temporary job record schema is unsupported");
-  if (value["id"] !== expectedId) throw new Error("Temporary job record ID does not match its file");
-  const conversationId = value["conversationId"];
-  if (conversationId !== null && (typeof conversationId !== "string" || conversationId.length === 0)) {
-    throw new Error("Temporary job conversation ID is invalid");
-  }
-  const progress = value["progress"];
-  if (!rec3(progress) || progress["jobId"] !== expectedId || typeof progress["status"] !== "string") {
-    throw new Error("Temporary job progress is invalid");
-  }
-  const createdAt = value["createdAt"];
-  const updatedAt = value["updatedAt"];
-  const expiresAt = value["expiresAt"];
-  if (typeof createdAt !== "string" || typeof updatedAt !== "string" || typeof expiresAt !== "string" || !Number.isFinite(Date.parse(createdAt)) || !Number.isFinite(Date.parse(updatedAt)) || !Number.isFinite(Date.parse(expiresAt))) {
-    throw new Error("Temporary job timestamps are invalid");
-  }
-  return {
-    schema: temporaryJobSchema,
-    id: expectedId,
-    conversationId,
-    progress,
-    state: value["state"],
-    createdAt,
-    updatedAt,
-    expiresAt
-  };
-};
-var TemporaryJobStore = class {
-  #dir;
-  #ttlMs;
-  constructor(directory, ttlSeconds) {
-    if (directory.trim().length === 0) throw new Error("Temporary job directory is required");
-    if (!Number.isFinite(ttlSeconds) || ttlSeconds < 1) throw new Error("Temporary job TTL must be positive");
-    this.#dir = resolve(directory);
-    this.#ttlMs = ttlSeconds * 1e3;
-  }
-  async create(progress, state2, nowMs = Date.now()) {
-    if (progress.status === "completed") throw new Error("A completed job cannot create a recovery ID");
-    await mkdir2(this.#dir, { recursive: true });
-    for (let attempt = 0; attempt < 32; attempt += 1) {
-      const id = idFor();
-      const record11 = this.#record(id, null, progress, state2, nowMs, nowMs);
-      try {
-        await writeFile2(this.#path(id), encode(record11), {
-          encoding: "utf8",
-          flag: "wx",
-          mode: 384
-        });
-        return record11;
-      } catch (cause) {
-        if (code(cause) === "EEXIST") continue;
-        throw cause;
-      }
-    }
-    throw new Error("Could not allocate a unique temporary job ID");
-  }
-  async save(id, conversationId, progress, state2, nowMs = Date.now()) {
-    this.#assertId(id);
-    if (conversationId !== null && conversationId.length === 0) {
-      throw new Error("Temporary job conversation ID cannot be empty");
-    }
-    const current = await this.get(id, nowMs);
-    if (current === null) throw new Error(`Temporary job ${id} does not exist or has expired`);
-    if (current.conversationId !== null && conversationId !== current.conversationId) {
-      throw new Error("Temporary job conversation ID cannot change once established");
-    }
-    if (progress.status === "completed") {
-      await this.delete(id);
-      return null;
-    }
-    const record11 = this.#record(id, conversationId, progress, state2, Date.parse(current.createdAt), nowMs);
-    await this.#replace(record11);
-    return record11;
-  }
-  async get(id, nowMs = Date.now()) {
-    this.#assertId(id);
-    const source = await this.#read(id);
-    if (source === null) return null;
-    const record11 = parse2(source, id);
-    if (Date.parse(record11.expiresAt) <= nowMs) {
-      await this.delete(id);
-      return null;
-    }
-    return record11;
-  }
-  async delete(id) {
-    this.#assertId(id);
-    try {
-      await rm(this.#path(id));
-      return true;
-    } catch (cause) {
-      if (code(cause) === "ENOENT") return false;
-      throw cause;
-    }
-  }
-  async sweep(nowMs = Date.now()) {
-    await mkdir2(this.#dir, { recursive: true });
-    const names = await readdir2(this.#dir);
-    let removed = 0;
-    for (const name of names) {
-      const match = /^([0-9a-f]{8})\.json$/u.exec(name);
-      if (!match) continue;
-      const id = match[1];
-      try {
-        const source = await this.#read(id);
-        if (source === null) continue;
-        const record11 = parse2(source, id);
-        if (Date.parse(record11.expiresAt) > nowMs) continue;
-      } catch {
-      }
-      if (await this.delete(id)) removed += 1;
-    }
-    return removed;
-  }
-  #record(id, conversationId, progress, state2, createdAtMs, updatedAtMs) {
-    return {
-      schema: temporaryJobSchema,
-      id,
-      conversationId,
-      progress: withId(progress, id),
-      state: state2,
-      createdAt: iso2(createdAtMs),
-      updatedAt: iso2(updatedAtMs),
-      expiresAt: iso2(updatedAtMs + this.#ttlMs)
-    };
-  }
-  #assertId(id) {
-    if (!temporaryJobIdPattern.test(id)) throw new Error("Temporary job ID must contain exactly eight hexadecimal characters");
-  }
-  #path(id) {
-    return resolve(this.#dir, `${id}.json`);
-  }
-  async #read(id) {
-    try {
-      return await readFile2(this.#path(id), "utf8");
-    } catch (cause) {
-      if (code(cause) === "ENOENT") return null;
-      throw cause;
-    }
-  }
-  async #replace(record11) {
-    await mkdir2(this.#dir, { recursive: true });
-    const temporary = resolve(
-      this.#dir,
-      `.${record11.id}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`
-    );
-    try {
-      await writeFile2(temporary, encode(record11), {
-        encoding: "utf8",
-        flag: "wx",
-        mode: 384
-      });
-      await rename2(temporary, this.#path(record11.id));
-    } finally {
-      await rm(temporary, { force: true });
-    }
-  }
-};
-
 // src/progress/work.ts
 var local = (id, label2, phase, weight2 = 1) => ({
   id,
@@ -7714,11 +7418,8 @@ var baseWork = (zodiac = "tropical") => [
 ];
 export {
   BillCollector,
-  BillStore,
-  JobStore,
   OpenAITransportError,
   ProgressTracker,
-  TemporaryJobStore,
   agnosticNeutrality,
   assembleChart,
   auditField,
@@ -7801,8 +7502,6 @@ export {
   snapshotTokenEstimate,
   strictShape,
   structuredOutputCatalogue,
-  temporaryJobIdPattern,
-  temporaryJobSchema,
   text3 as text,
   textEnum,
   unwantedExamples,
@@ -7811,4 +7510,4 @@ export {
   validateSourceForSemanticIngestion,
   worldviewNeutralityRules
 };
-//# sourceMappingURL=index.js.map
+//# sourceMappingURL=web.js.map
