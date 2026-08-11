@@ -25,7 +25,14 @@ jobs:
       - run: npm test
       - name: Guard browser dependency boundary
         run: |
-          ! grep -F 'from "astral-core"' dist/web.js
+          if grep -R -n -F 'from "astral-core"' src dist --include='*.ts' --include='*.js' --include='*.d.ts'; then
+            echo 'Bare astral-core import is forbidden'
+            exit 1
+          fi
+          if grep -R -n -F "from 'astral-core'" src dist --include='*.ts' --include='*.js' --include='*.d.ts'; then
+            echo 'Bare astral-core import is forbidden'
+            exit 1
+          fi
           ! grep -E 'node:(fs|path|url)' dist/web.js
-          grep -F 'from "astral-core/web"' dist/web.js
+          grep -R -n -F 'astral-core/web' dist --include='*.js' | head -20
       # This job also validates the regenerated committed package state on split-modules.
