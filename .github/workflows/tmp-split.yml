@@ -1,0 +1,266 @@
+name: tmp-split
+on:
+  push:
+    branches: [agent/split-modules]
+    paths: [.github/workflows/tmp-split.yml]
+permissions:
+  contents: write
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: agent/split-modules
+          fetch-depth: 0
+      - uses: actions/checkout@v5
+        with:
+          repository: Online-Arcana/astrology
+          ref: 86fadaebccb497930f6a38a4a8f5c4c15b2c2ff6
+          path: _astrology
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Build interpreter tree
+        run: |
+          set -euo pipefail
+          rm -rf src scripts test dist vendor package-lock.json tsconfig*.json
+          mkdir -p src/types src/plan src/chart
+          for d in billing chart interpretation job llm progress ref; do cp -a "_astrology/src/$d" "src/$d"; done
+          cp _astrology/src/types/chart.ts src/types/chart.ts
+          cp _astrology/src/types/progress.ts src/types/progress.ts
+          cp _astrology/scripts/embed-corpus-xml.mjs scripts/embed-corpus-xml.mjs
+          cp _astrology/src/calculate/plan.ts src/plan/build.ts
+
+          cat > src/types/base.ts <<'TS'
+          export type { Json, JsonRef } from "astral-core";
+          export type PreferredGender = "male" | "female" | "non-binary";
+          export const preferredGenderOf = (value: { preferredGender?: PreferredGender }): PreferredGender => value.preferredGender ?? "male";
+          TS
+          cat > src/types/astro.ts <<'TS'
+          export * from "astral-core";
+          TS
+          cat > src/types/file.ts <<'TS'
+          import type { CalcProvenance, CalcSettings, CalcWarning, Calculation, JsonRef, Zodiac } from "astral-core";
+          import type { PreferredGender } from "./base.js";
+
+          export interface InterpretationUnit { id: string; zodiac: Zodiac; section: string; domain: string | null; allowedSourceRefs: JsonRef[]; }
+          export interface InterpretationPlan { schema: "astral-interpretation-plan/1.1.0"; zodiac: Zodiac; units: InterpretationUnit[]; }
+          export type CalculationProvenance = CalcProvenance;
+          export type CalculationWarning = CalcWarning;
+          export type CalculationSettings = CalcSettings & { interpretationMode: Zodiac };
+          export interface AstralCalculation extends Omit<Calculation, "schema" | "settings"> {
+            schema: "astral-calculation/1.1.0";
+            subject: { providedName: string | null; language: string; adult: true; preferredGender: PreferredGender };
+            settings: CalculationSettings;
+            interpretationPlan: InterpretationPlan;
+          }
+          TS
+          cat > src/types/index.ts <<'TS'
+          export * from "./base.js";
+          export * from "./astro.js";
+          export * from "./chart.js";
+          export * from "./file.js";
+          export * from "./progress.js";
+          TS
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/plan/build.ts')
+          s=p.read_text().replace('../types/astro.js','../types/astro.js').replace('../types/file.js','../types/file.js')
+          s=s.replace('buildInterpretationPlan','buildPlan')
+          p.write_text(s)
+          p=Path('src/chart/assemble.ts')
+          s=p.read_text().replace('import { generatedNamePattern } from "../file/invariants.js";','import { generatedNamePattern } from "./name.js";')
+          p.write_text(s)
+          PY
+          cat > src/chart/name.ts <<'TS'
+          export const generatedNamePattern = /^[\p{L}\p{N}]+-[\p{L}\p{N}]+-[\p{L}\p{N}]+$/u;
+          TS
+          cat > src/input.ts <<'TS'
+          import type { Calculation } from "astral-core";
+          import { buildPlan } from "./plan/build.js";
+          import type { PreferredGender } from "./types/base.js";
+          import type { AstralCalculation } from "./types/file.js";
+
+          export interface Subject { name?: string; language?: string; gender?: PreferredGender; }
+          export const prepare = (calculation: Calculation, subject: Subject = {}): AstralCalculation => ({
+            ...calculation,
+            schema: "astral-calculation/1.1.0",
+            subject: {
+              providedName: subject.name?.trim() || null,
+              language: subject.language?.trim() || "en",
+              adult: true,
+              preferredGender: subject.gender ?? "male",
+            },
+            settings: { ...calculation.settings, interpretationMode: calculation.system.zodiac },
+            interpretationPlan: buildPlan(calculation.system),
+          });
+          TS
+
+          cat > src/config.ts <<'TS'
+          export type Env = Readonly<Record<string, string | undefined>>;
+          export interface Config {
+            openai: { apiKey: string; adminKey: string | null; bigModel: string; bigEscalationModel: string; smallModel: string; smallEscalationModel: string; reasoning: "none" | "low" | "medium" | "high"; maxOutputTokens: number };
+            chart: { maxRetries: number; throwOnInterpretationFailure: boolean; foundationUnits?: number; laneCount?: number; laneUnits?: number; laneContextTokens?: number };
+            billing: { directory: string };
+            jobs: { ttlSeconds: number };
+          }
+          const ints = (value: string | undefined, fallback: number, key: string): number => {
+            if (value === undefined || value === "") return fallback;
+            const parsed = Number(value);
+            if (!Number.isSafeInteger(parsed) || parsed < 1) throw new Error(`${key} must be a positive integer`);
+            return parsed;
+          };
+          const bounded = (value: string | undefined, fallback: number, key: string, maximum: number): number => {
+            const selected = ints(value, fallback, key);
+            if (selected > maximum) throw new Error(`${key} must not exceed ${maximum}`);
+            return selected;
+          };
+          const bool = (value: string | undefined, fallback: boolean, key: string): boolean => {
+            if (value === undefined || value === "") return fallback;
+            if (value === "true") return true;
+            if (value === "false") return false;
+            throw new Error(`${key} must be true or false`);
+          };
+          const reasoning = (value: string | undefined): Config["openai"]["reasoning"] => {
+            const selected = value ?? "low";
+            if (selected === "none" || selected === "low" || selected === "medium" || selected === "high") return selected;
+            throw new Error("OPENAI_REASONING has an unsupported value");
+          };
+          export const readConfig = (env: Env): Config => ({
+            openai: {
+              apiKey: env["OPENAI_API_KEY"] ?? "",
+              adminKey: env["OPENAI_ADMIN_KEY"] || null,
+              bigModel: env["OPENAI_BIG_MODEL"] ?? "gpt-5.6-luna",
+              bigEscalationModel: env["OPENAI_BIG_ESCALATION_MODEL"] ?? "gpt-5.6-luna",
+              smallModel: env["OPENAI_SMALL_MODEL"] ?? "gpt-5-nano",
+              smallEscalationModel: env["OPENAI_SMALL_ESCALATION_MODEL"] ?? "gpt-5.6-luna",
+              reasoning: reasoning(env["OPENAI_REASONING"]),
+              maxOutputTokens: ints(env["OPENAI_MAX_OUTPUT_TOKENS"], 12000, "OPENAI_MAX_OUTPUT_TOKENS"),
+            },
+            chart: {
+              maxRetries: bounded(env["ASTRAL_MAX_RETRIES"], 2, "ASTRAL_MAX_RETRIES", 3),
+              throwOnInterpretationFailure: bool(env["ASTRAL_DEBUG_THROW_ON_INTERPRETATION_FAILURE"], false, "ASTRAL_DEBUG_THROW_ON_INTERPRETATION_FAILURE"),
+              foundationUnits: bounded(env["ASTRAL_FOUNDATION_UNITS"], 10, "ASTRAL_FOUNDATION_UNITS", 10),
+              laneCount: bounded(env["ASTRAL_LANE_COUNT"], 4, "ASTRAL_LANE_COUNT", 4),
+              laneUnits: bounded(env["ASTRAL_LANE_UNITS"], 10, "ASTRAL_LANE_UNITS", 10),
+              laneContextTokens: ints(env["ASTRAL_LANE_CONTEXT_TOKENS"], 60000, "ASTRAL_LANE_CONTEXT_TOKENS"),
+            },
+            billing: { directory: env["ASTRAL_BILL_DIR"]?.trim() || ".astral/bills" },
+            jobs: { ttlSeconds: ints(env["ASTRAL_JOB_TTL_SECONDS"], 3600, "ASTRAL_JOB_TTL_SECONDS") },
+          });
+          TS
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('src').resolve()
+          selected={'billing','chart','interpretation','job','llm','progress','ref','types','plan'}
+          core={'aspect','astro','compat','derived','dignity','eclipse','house','pattern','place','rules','time','zodiac','calculate'}
+          rx=re.compile(r'(["\'])(\.\.?/[^"\']+)(["\'])')
+          for p in root.rglob('*.ts'):
+            if p.name in {'input.ts','config.ts'}: continue
+            text=p.read_text()
+            def repl(m):
+              spec=m.group(2)
+              target=(p.parent/spec).resolve()
+              try: rel=target.relative_to(Path('_astrology/src').resolve())
+              except Exception:
+                # Resolve against the copied src tree, then classify its top-level path.
+                try: rel=target.relative_to(root)
+                except Exception: return m.group(0)
+              raw=str(rel)
+              if raw.endswith('.js'): raw=raw[:-3]
+              top=raw.split('/',1)[0]
+              if top in core:
+                return f'{m.group(1)}astral-core{m.group(3)}'
+              return m.group(0)
+            p.write_text(rx.sub(repl,text))
+          PY
+
+          cat > src/index.ts <<'TS'
+          export * from "./config.js";
+          export * from "./input.js";
+          export * from "./types/index.js";
+          export * from "./plan/build.js";
+          export * from "./chart/parse.js";
+          export * from "./chart/assemble.js";
+          export * from "./interpretation/corpus/compile.js";
+          export * from "./interpretation/corpus/types.js";
+          export * from "./interpretation/map/provider.js";
+          export * from "./interpretation/map/builtin.js";
+          export * from "./llm/openaiSchema.js";
+          export * from "./llm/openaiTransport.js";
+          export * from "./llm/audit/index.js";
+          export * from "./llm/audit/structured.js";
+          export * from "./llm/schema/build.js";
+          export * from "./llm/schema/section.js";
+          export * from "./llm/schema/chart.js";
+          export * from "./llm/orchestrate/index.js";
+          export * from "./llm/orchestrate/plan.js";
+          export * from "./billing/types.js";
+          export * from "./billing/pricing.js";
+          export * from "./billing/bill.js";
+          export * from "./billing/store.js";
+          export * from "./billing/openaiCosts.js";
+          export * from "./job/store.js";
+          export * from "./job/recovery.js";
+          export * from "./progress/work.js";
+          export * from "./progress/tracker.js";
+          TS
+
+          cat > package.json <<'JSON'
+          {
+            "name": "astral-interpreter",
+            "version": "0.1.0",
+            "description": "LLM interpretation for astral-core calculations",
+            "type": "module",
+            "private": true,
+            "license": "MIT",
+            "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+            "files": ["dist", "src/interpretation/corpus/data/xml", "LICENSE"],
+            "scripts": {
+              "corpus:embed": "node scripts/embed-corpus-xml.mjs",
+              "vendor:schema": "npm --prefix vendor/openai-schema install && npm --prefix vendor/openai-schema run build",
+              "vendor:build": "npm run vendor:schema",
+              "check": "npm run corpus:embed && tsc -p tsconfig.json --noEmit",
+              "build": "npm run corpus:embed && rm -rf dist && tsc -p tsconfig.json",
+              "ci": "npm run check && npm run build"
+            },
+            "dependencies": {
+              "astral-core": "file:vendor/astral-core",
+              "openai-schema": "file:vendor/openai-schema"
+            },
+            "devDependencies": { "@types/node": "^22.15.3", "typescript": "5.9.3" }
+          }
+          JSON
+          cp _astrology/tsconfig.json tsconfig.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('tsconfig.json'); d=json.loads(p.read_text()); d['compilerOptions']['outDir']='dist'; d['compilerOptions']['rootDir']='src'; d['compilerOptions']['declaration']=True; d['compilerOptions']['declarationMap']=True; d['compilerOptions']['sourceMap']=True; d['include']=['src/**/*.ts']; p.write_text(json.dumps(d,indent=2)+'\n')
+          PY
+          cat > .gitmodules <<'EOF'
+          [submodule "vendor/astral-core"]
+            path = vendor/astral-core
+            url = https://github.com/Online-Arcana/astral-chart-wheel.git
+          [submodule "vendor/openai-schema"]
+            path = vendor/openai-schema
+            url = https://github.com/kitty-crow/openai-schema.git
+          EOF
+          git submodule add -f https://github.com/Online-Arcana/astral-chart-wheel.git vendor/astral-core
+          git -C vendor/astral-core fetch origin agent/split-modules
+          git -C vendor/astral-core checkout origin/agent/split-modules
+          git submodule add -f https://github.com/kitty-crow/openai-schema.git vendor/openai-schema
+          git -C vendor/openai-schema checkout b2de9ce96fac43025ac92d805d3407f4dffa32f9
+          npm run vendor:build
+          npm install --ignore-scripts
+          npm run check
+          npm run build
+          rm -rf _astrology
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git commit -m "Split LLM interpretation into astral-interpreter"
+          git push origin HEAD:agent/split-modules
