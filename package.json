@@ -7,20 +7,24 @@
   "license": "MIT",
   "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
   "files": ["dist", "src/interpretation/corpus/data/xml", "LICENSE"],
-  "bundleDependencies": ["astral-core", "openai-schema"],
   "scripts": {
     "corpus:embed": "node scripts/embed-corpus-xml.mjs",
     "vendor:core": "npm --prefix vendor/astral-core run vendor:build && npm --prefix vendor/astral-core install --ignore-scripts && npm --prefix vendor/astral-core run build",
     "vendor:schema": "npm --prefix vendor/openai-schema install && npm --prefix vendor/openai-schema run build",
     "vendor:build": "npm run vendor:core && npm run vendor:schema",
     "check": "npm run corpus:embed && tsc -p tsconfig.json --noEmit",
-    "build": "npm run corpus:embed && rm -rf dist && tsc -p tsconfig.build.json",
+    "build": "npm run corpus:embed && rm -rf dist && tsc -p tsconfig.build.json && node scripts/bundle.mjs",
     "test": "node test/interpreter.mjs",
     "ci": "npm run check && npm run build && npm test"
   },
-  "dependencies": {
-    "astral-core": "file:vendor/astral-core",
-    "openai-schema": "file:vendor/openai-schema"
+  "peerDependencies": {
+    "astral-core": "0.1.0"
   },
-  "devDependencies": { "@types/node": "^22.15.3", "typescript": "5.9.3" }
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "astral-core": "file:vendor/astral-core",
+    "esbuild": "^0.25.0",
+    "openai-schema": "file:vendor/openai-schema",
+    "typescript": "5.9.3"
+  }
 }
