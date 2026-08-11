@@ -2,7 +2,9 @@ name: tmp-pin-core-package
 on:
   push:
     branches: [agent/split-modules]
-    paths: [.github/workflows/tmp-pin-core-package.yml]
+    paths:
+      - .github/workflows/tmp-pin-core-package.yml
+      - vendor/astral-core
 permissions:
   contents: write
 jobs:
@@ -13,37 +15,70 @@ jobs:
         with:
           ref: agent/split-modules
           submodules: recursive
+          fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-      - name: Pin core and validate interpreter package
+      - name: Validate pinned core and interpreter packages
         run: |
           set -euo pipefail
-          git -C vendor/astral-core fetch origin b69341e4eda822d22a07162bd98d2d498375ae59
-          git -C vendor/astral-core checkout --detach b69341e4eda822d22a07162bd98d2d498375ae59
-          git -C vendor/astral-core submodule update --init --recursive
           npm run vendor:build
+          npm install --package-lock-only --ignore-scripts
           npm ci
           npm run check
           npm run build
           npm test
+
           rm -rf /tmp/astral-interpreter-consumer
           mkdir -p /tmp/astral-interpreter-consumer
-          npm pack --pack-destination /tmp/astral-interpreter-consumer
+          npm --prefix vendor/astral-core pack --pack-destination /tmp/astral-interpreter-consumer >/dev/null
+          npm pack --pack-destination /tmp/astral-interpreter-consumer >/dev/null
+
           tar -tzf /tmp/astral-interpreter-consumer/astral-interpreter-0.1.0.tgz > /tmp/astral-interpreter-package.txt
-          grep -q 'package/node_modules/astral-core/package.json' /tmp/astral-interpreter-package.txt
-          grep -q 'package/node_modules/openai-schema/package.json' /tmp/astral-interpreter-package.txt
-          if grep -q '^package/vendor/' /tmp/astral-interpreter-package.txt; then
-            echo 'vendor source leaked into packed interpreter' >&2
+          if grep -Eq '^package/(vendor|node_modules)/' /tmp/astral-interpreter-package.txt; then
+            echo 'dependency source leaked into packed interpreter' >&2
             exit 1
           fi
+          grep -q '^package/dist/index.js$' /tmp/astral-interpreter-package.txt
+          grep -q '^package/src/interpretation/corpus/data/xml/' /tmp/astral-interpreter-package.txt
+
           cd /tmp/astral-interpreter-consumer
           printf '{"name":"interpreter-consumer","private":true,"type":"module"}\n' > package.json
-          npm install ./astral-interpreter-0.1.0.tgz --ignore-scripts
-          node -e 'import("astral-interpreter").then(m => { if (typeof m.runInterpretationPlan !== "function") throw new Error("runInterpretationPlan export missing"); console.log("bundled astral-interpreter import passed") })'
+          npm install ./astral-core-0.1.0.tgz ./astral-interpreter-0.1.0.tgz --ignore-scripts >/dev/null
+          node --input-type=module <<'NODE'
+          import { randomChart } from 'astral-core';
+          import { compileReviewedCorpus, prepare, reviewedCorpusOrigin } from 'astral-interpreter';
+          let state = 0x1a2b3c4d;
+          const rng = () => {
+            state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+            return state / 0x1_0000_0000;
+          };
+          const calculation = await randomChart({ zodiac: 'tropical', ayanamsha: 'lahiri' }, rng);
+          const prepared = prepare(calculation, {
+            name: 'Package Consumer',
+            language: 'en-GB',
+            gender: 'non-binary',
+          });
+          if (prepared.provenance.calculationFingerprint !== calculation.provenance.calculationFingerprint) {
+            throw new Error('calculation fingerprint changed across interpreter boundary');
+          }
+          if (prepared.interpretationPlan.units.length === 0) throw new Error('interpretation plan is empty');
+          if (reviewedCorpusOrigin !== 'xml') throw new Error('reviewed corpus origin changed');
+          const corpus = compileReviewedCorpus(true);
+          if (Object.keys(corpus.atoms).length === 0 || Object.keys(corpus.claims).length === 0) {
+            throw new Error('reviewed corpus is empty');
+          }
+          console.log('standalone astral-interpreter package passed');
+          NODE
+
           cd "$GITHUB_WORKSPACE"
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add vendor/astral-core
-          git commit -m "Pin astral-core" || true
-          git push origin HEAD:agent/split-modules
+          git add package-lock.json
+          git add -f dist
+          if ! git diff --cached --quiet; then
+            git commit -m "Regenerate astral-interpreter package state"
+            git fetch origin agent/split-modules
+            git rebase origin/agent/split-modules
+            git push origin HEAD:agent/split-modules
+          fi
