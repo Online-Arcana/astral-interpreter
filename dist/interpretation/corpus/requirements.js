@@ -1,0 +1,83 @@
+import { compatibilityDomains } from "astral-core";
+const bodies = [
+    "sun", "moon", "mercury", "venus", "mars", "jupiter", "saturn", "uranus", "neptune", "pluto",
+];
+const points = [
+    "north-node", "south-node", "black-moon-lilith", "part-of-fortune", "part-of-spirit",
+];
+const angles = [
+    "ascendant", "descendant", "midheaven", "imum-coeli", "vertex", "antivertex", "east-point",
+];
+const signs = [
+    "aries", "taurus", "gemini", "cancer", "leo", "virgo",
+    "libra", "scorpio", "sagittarius", "capricorn", "aquarius", "pisces",
+];
+const aspects = [
+    "conjunction", "opposition", "trine", "square", "sextile",
+    "quincunx", "semisextile", "semisquare", "sesquiquadrate", "quintile", "biquintile",
+];
+const conditions = [
+    "element-fire", "element-earth", "element-air", "element-water",
+    "modality-cardinal", "modality-fixed", "modality-mutable",
+    "polarity-active", "polarity-receptive",
+    "hemisphere-eastern", "hemisphere-western", "hemisphere-northern", "hemisphere-southern",
+    "house-mode-angular", "house-mode-succedent", "house-mode-cadent",
+];
+const patterns = [
+    "stellium", "t-square", "grand-trine", "grand-cross", "yod",
+    "kite", "mystic-rectangle", "grand-sextile", "thor-hammer",
+];
+const derived = [
+    "lunar-phase",
+    "eclipses-at-birth",
+    "eclipses-prenatal-solar",
+    "eclipses-prenatal-lunar",
+    "rulership-dignity",
+    "chart-balance",
+    "dominant-themes",
+];
+const lifeDomains = [
+    "identityAndPurpose",
+    "emotionalNature",
+    "mindAndCommunication",
+    "romance",
+    "sexuality",
+    "committedPartnerships",
+    "homeAndFamily",
+    "childhoodPatterns",
+    "creativityAndSelfExpression",
+    "childrenAndNurturing",
+    "friendship",
+    "communityAndGroups",
+    "workStyle",
+    "careerAndVocation",
+    "businessAndLeadership",
+    "moneyAndMaterialSecurity",
+    "publicLifeAndAmbition",
+    "conflictAndAssertion",
+    "growthAndOpportunity",
+    "restrictionsAndResponsibility",
+    "transformationAndCrisis",
+    "spiritualityAndMeaning",
+    "unconsciousPatterns",
+    "wellbeingAndDailyRhythm",
+    "developmentalDirection",
+];
+export const requiredCorpusAtomIds = [
+    ...bodies.map((id) => `body.${id}`),
+    ...points.map((id) => `point.${id}`),
+    ...angles.map((id) => `angle.${id}`),
+    ...signs.map((id) => `sign.${id}`),
+    ...Array.from({ length: 12 }, (_, index) => `house.${index + 1}`),
+    ...aspects.map((id) => `aspect.${id}`),
+    ...conditions.map((id) => `condition.${id}`),
+    ...patterns.map((id) => `pattern.${id}`),
+    ...derived.map((id) => `derived.${id}`),
+    ...lifeDomains.map((id) => `life-domain.${id}`),
+    ...compatibilityDomains.map((id) => `compatibility-domain.${id.replaceAll("_", "-")}`),
+    "synthesis.overview",
+    "synthesis.system-synthesis",
+    "synthesis.final-synthesis",
+];
+export const requiredCorpusAtomSet = new Set(requiredCorpusAtomIds);
+//# sourceMappingURL=requirements.js.map

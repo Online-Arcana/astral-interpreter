@@ -5,8 +5,17 @@
   "type": "module",
   "private": true,
   "license": "MIT",
-  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
-  "files": ["dist", "src/interpretation/corpus/data/xml", "LICENSE"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src/interpretation/corpus/data/xml",
+    "LICENSE"
+  ],
   "scripts": {
     "corpus:embed": "node scripts/embed-corpus-xml.mjs",
     "vendor:core": "npm --prefix vendor/astral-core run vendor:build && npm --prefix vendor/astral-core install --ignore-scripts && npm --prefix vendor/astral-core run build",
@@ -14,8 +23,9 @@
     "vendor:build": "npm run vendor:core && npm run vendor:schema",
     "check": "npm run corpus:embed && tsc -p tsconfig.json --noEmit",
     "build": "npm run corpus:embed && rm -rf dist && tsc -p tsconfig.build.json && node scripts/bundle.mjs",
-    "test": "node test/interpreter.mjs",
-    "ci": "npm run check && npm run build && npm test"
+    "test": "node test/interpreter.mjs && npm run test:regression",
+    "ci": "npm run check && npm run build && npm test",
+    "test:regression": "npm run corpus:embed && rm -rf .test && tsc -p tsconfig.test.json && node .test/test/audit.js && node .test/test/worldviewNeutrality.js && node .test/test/sourceWorldviewGate.js && node .test/test/interpretationMap.js && node .test/test/interpretationMapCompiler.js && node .test/test/voiceSeparation.js && node .test/test/serializedPromptRuntime.js && node .test/test/semanticReconstruction.js && node .test/test/semanticPlanFallback.js && node .test/test/xmlCorpus.js && node .test/test/corpusCompiler.js && node .test/test/completionRepair.js && node .test/test/reconstructionMatrix.js && node .test/test/auditHook.js && node .test/test/openaiTransport.js && node .test/test/openaiTransportTimeout.js && node .test/test/openaiFiles.js && node .test/test/openaiRuntime.js && node .test/test/contextWindow.js && node .test/test/billing.js && node .test/test/orchestrationResilience.js && node .test/test/recovery.js && node .test/test/crossUnitCoherence.js && node .test/test/waves.js && node .test/test/freshWaves.js"
   },
   "peerDependencies": {
     "astral-core": "0.1.0"

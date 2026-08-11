@@ -1,0 +1,1 @@
+{"version":3,"file":"builtin.js","sourceRoot":"","sources":["../../../src/interpretation/map/builtin.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,qBAAqB,EAAE,MAAM,yBAAyB,CAAC;AAEhE,OAAO,EAAE,0BAA0B,EAAuC,MAAM,eAAe,CAAC;AAEhG;;;;GAIG;AACH,MAAM,CAAC,MAAM,8BAA8B,GAAiC,qBAAqB,CAAC,IAAI,CAAC,CAAC;AAExG,MAAM,CAAC,MAAM,0BAA0B,GAAmC,0BAA0B,CAClG,8BAA8B,CAC/B,CAAC"}
