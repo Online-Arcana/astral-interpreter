@@ -32,10 +32,12 @@ jobs:
 
           rm -rf /tmp/astral-interpreter-consumer
           mkdir -p /tmp/astral-interpreter-consumer
-          npm --prefix vendor/astral-core pack --pack-destination /tmp/astral-interpreter-consumer >/dev/null
-          npm pack --pack-destination /tmp/astral-interpreter-consumer >/dev/null
+          CORE_PACK_JSON="$(npm --prefix vendor/astral-core pack --json --pack-destination /tmp/astral-interpreter-consumer)"
+          CORE_PACK_NAME="$(printf '%s' "$CORE_PACK_JSON" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>process.stdout.write(JSON.parse(s)[0].filename))')"
+          INTERPRETER_PACK_JSON="$(npm pack --json --pack-destination /tmp/astral-interpreter-consumer)"
+          INTERPRETER_PACK_NAME="$(printf '%s' "$INTERPRETER_PACK_JSON" | node -e 'let s="";process.stdin.on("data",d=>s+=d);process.stdin.on("end",()=>process.stdout.write(JSON.parse(s)[0].filename))')"
 
-          tar -tzf /tmp/astral-interpreter-consumer/astral-interpreter-0.1.0.tgz > /tmp/astral-interpreter-package.txt
+          tar -tzf "/tmp/astral-interpreter-consumer/$INTERPRETER_PACK_NAME" > /tmp/astral-interpreter-package.txt
           if grep -Eq '^package/(vendor|node_modules)/' /tmp/astral-interpreter-package.txt; then
             echo 'dependency source leaked into packed interpreter' >&2
             exit 1
@@ -45,7 +47,7 @@ jobs:
 
           cd /tmp/astral-interpreter-consumer
           printf '{"name":"interpreter-consumer","private":true,"type":"module"}\n' > package.json
-          npm install ./astral-core-0.1.0.tgz ./astral-interpreter-0.1.0.tgz --ignore-scripts >/dev/null
+          npm install "./$CORE_PACK_NAME" "./$INTERPRETER_PACK_NAME" --ignore-scripts >/dev/null
           node --input-type=module <<'NODE'
           import { randomChart } from 'astral-core';
           import { compileReviewedCorpus, prepare, reviewedCorpusOrigin } from 'astral-interpreter';
