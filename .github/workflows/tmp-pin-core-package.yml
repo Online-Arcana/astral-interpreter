@@ -46,12 +46,27 @@ jobs:
           grep -q '^package/src/interpretation/corpus/data/xml/' /tmp/astral-interpreter-package.txt
 
           cd /tmp/astral-interpreter-consumer
-          printf '{"name":"interpreter-consumer","private":true,"type":"module"}\n' > package.json
-          npm install "./$CORE_PACK_NAME" --ignore-scripts >/dev/null
-          npm install "./$INTERPRETER_PACK_NAME" --ignore-scripts >/dev/null
+          node - "$CORE_PACK_NAME" "$INTERPRETER_PACK_NAME" <<'NODE'
+          const fs = require('node:fs');
+          const [core, interpreter] = process.argv.slice(2);
+          fs.writeFileSync('package.json', JSON.stringify({
+            name: 'interpreter-consumer',
+            private: true,
+            type: 'module',
+            dependencies: {
+              'astral-core': `file:./${core}`,
+              'astral-interpreter': `file:./${interpreter}`,
+            },
+          }, null, 2) + '\n');
+          NODE
+          npm install --ignore-scripts --legacy-peer-deps >/dev/null
           node --input-type=module <<'NODE'
-          import { randomChart } from 'astral-core';
-          import { compileReviewedCorpus, prepare, reviewedCorpusOrigin } from 'astral-interpreter';
+          import corePackage from './node_modules/astral-core/package.json' with { type: 'json' };
+          import interpreterPackage from './node_modules/astral-interpreter/package.json' with { type: 'json' };
+          if (corePackage.name !== 'astral-core' || corePackage.version !== '0.1.0') throw new Error('local astral-core tarball not installed');
+          if (interpreterPackage.name !== 'astral-interpreter' || interpreterPackage.version !== '0.1.0') throw new Error('local astral-interpreter tarball not installed');
+          const { randomChart } = await import('astral-core');
+          const { compileReviewedCorpus, prepare, reviewedCorpusOrigin } = await import('astral-interpreter');
           let state = 0x1a2b3c4d;
           const rng = () => {
             state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
