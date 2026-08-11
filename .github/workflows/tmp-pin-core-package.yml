@@ -20,7 +20,7 @@ jobs:
         run: |
           set -euo pipefail
           git -C vendor/astral-core fetch origin agent/split-modules
-          git -C vendor/astral-core checkout 53b424c0e6502628669b33dcec982a7f53f3390e
+          git -C vendor/astral-core checkout origin/agent/split-modules
           git -C vendor/astral-core submodule update --init --recursive
           npm run vendor:build
           npm ci
@@ -29,10 +29,16 @@ jobs:
           npm test
           mkdir -p /tmp/astral-interpreter-consumer
           npm pack --pack-destination /tmp/astral-interpreter-consumer
+          tar -tzf /tmp/astral-interpreter-consumer/astral-interpreter-0.1.0.tgz | grep -q 'package/node_modules/astral-core/package.json'
+          tar -tzf /tmp/astral-interpreter-consumer/astral-interpreter-0.1.0.tgz | grep -q 'package/node_modules/openai-schema/package.json'
+          if tar -tzf /tmp/astral-interpreter-consumer/astral-interpreter-0.1.0.tgz | grep -q '^package/vendor/'; then
+            echo 'vendor source leaked into packed interpreter' >&2
+            exit 1
+          fi
           cd /tmp/astral-interpreter-consumer
           printf '{"name":"interpreter-consumer","private":true,"type":"module"}\n' > package.json
           npm install ./astral-interpreter-0.1.0.tgz --ignore-scripts
-          node -e 'import("astral-interpreter").then(m => { if (typeof m.runInterpretationPlan !== "function") throw new Error("runInterpretationPlan export missing"); console.log("packed astral-interpreter import passed") })'
+          node -e 'import("astral-interpreter").then(m => { if (typeof m.runInterpretationPlan !== "function") throw new Error("runInterpretationPlan export missing"); console.log("bundled astral-interpreter import passed") })'
           cd "$GITHUB_WORKSPACE"
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
