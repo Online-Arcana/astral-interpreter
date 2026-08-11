@@ -13,7 +13,7 @@
     "vendor:schema": "npm --prefix vendor/openai-schema install && npm --prefix vendor/openai-schema run build",
     "vendor:build": "npm run vendor:core && npm run vendor:schema",
     "check": "npm run corpus:embed && tsc -p tsconfig.json --noEmit",
-    "build": "npm run corpus:embed && rm -rf dist && tsc -p tsconfig.json",
+    "build": "npm run corpus:embed && rm -rf dist && tsc -p tsconfig.build.json",
     "test": "node test/interpreter.mjs",
     "ci": "npm run check && npm run build && npm test"
   },
