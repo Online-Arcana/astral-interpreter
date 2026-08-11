@@ -23,4 +23,9 @@ jobs:
       - run: npm run check
       - run: npm run build
       - run: npm test
+      - name: Guard browser dependency boundary
+        run: |
+          ! grep -F 'from "astral-core"' dist/web.js
+          ! grep -E 'node:(fs|path|url)' dist/web.js
+          grep -F 'from "astral-core/web"' dist/web.js
       # This job also validates the regenerated committed package state on split-modules.
