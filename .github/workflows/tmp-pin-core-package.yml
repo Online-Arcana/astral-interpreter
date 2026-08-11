@@ -29,9 +29,10 @@ jobs:
           npm test
           mkdir -p /tmp/astral-interpreter-consumer
           npm pack --pack-destination /tmp/astral-interpreter-consumer
-          tar -tzf /tmp/astral-interpreter-consumer/astral-interpreter-0.1.0.tgz | grep -q 'package/node_modules/astral-core/package.json'
-          tar -tzf /tmp/astral-interpreter-consumer/astral-interpreter-0.1.0.tgz | grep -q 'package/node_modules/openai-schema/package.json'
-          if tar -tzf /tmp/astral-interpreter-consumer/astral-interpreter-0.1.0.tgz | grep -q '^package/vendor/'; then
+          tar -tzf /tmp/astral-interpreter-consumer/astral-interpreter-0.1.0.tgz > /tmp/astral-interpreter-package.txt
+          grep -q 'package/node_modules/astral-core/package.json' /tmp/astral-interpreter-package.txt
+          grep -q 'package/node_modules/openai-schema/package.json' /tmp/astral-interpreter-package.txt
+          if grep -q '^package/vendor/' /tmp/astral-interpreter-package.txt; then
             echo 'vendor source leaked into packed interpreter' >&2
             exit 1
           fi
