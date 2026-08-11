@@ -24,6 +24,11 @@ jobs:
       - name: Rebuild browser-safe interpreter package
         run: |
           set -euo pipefail
+          CORE=05e74423b62da0ad9dc87582494a4304e33fe725
+          git -C vendor/astral-core fetch origin "$CORE"
+          git -C vendor/astral-core checkout "$CORE"
+          git add vendor/astral-core
+
           npm run vendor:build
           npm ci
           npm run check
@@ -37,11 +42,8 @@ jobs:
           git restore --source=HEAD --staged --worktree .github/workflows || true
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add vendor/astral-core
           git add -f dist
-          if git diff --cached --quiet; then
-            echo "Interpreter package state already current"
-          else
-            git commit -m "Regenerate browser-safe interpreter bundle"
-            git pull --rebase origin agent/split-modules
-            git push origin HEAD:agent/split-modules
-          fi
+          git commit -m "Use browser-safe core from interpreter web bundle"
+          git pull --rebase origin agent/split-modules
+          git push origin HEAD:agent/split-modules
