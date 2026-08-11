@@ -1,0 +1,41 @@
+name: tmp-pin-core-package
+on:
+  push:
+    branches: [agent/split-modules]
+    paths: [.github/workflows/tmp-pin-core-package.yml]
+permissions:
+  contents: write
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/split-modules
+          submodules: recursive
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - name: Pin packageable core and validate interpreter
+        run: |
+          set -euo pipefail
+          git -C vendor/astral-core fetch origin agent/split-modules
+          git -C vendor/astral-core checkout 53b424c0e6502628669b33dcec982a7f53f3390e
+          git -C vendor/astral-core submodule update --init --recursive
+          npm run vendor:build
+          npm ci
+          npm run check
+          npm run build
+          npm test
+          mkdir -p /tmp/astral-interpreter-consumer
+          npm pack --pack-destination /tmp/astral-interpreter-consumer
+          cd /tmp/astral-interpreter-consumer
+          printf '{"name":"interpreter-consumer","private":true,"type":"module"}\n' > package.json
+          npm install ./astral-interpreter-0.1.0.tgz --ignore-scripts
+          node -e 'import("astral-interpreter").then(m => { if (typeof m.runInterpretationPlan !== "function") throw new Error("runInterpretationPlan export missing"); console.log("packed astral-interpreter import passed") })'
+          cd "$GITHUB_WORKSPACE"
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add vendor/astral-core
+          git commit -m "Pin packageable astral-core" || true
+          git push origin HEAD:agent/split-modules
