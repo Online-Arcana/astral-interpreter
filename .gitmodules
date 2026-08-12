@@ -1,6 +1,6 @@
 [submodule "vendor/astral-core"]
 	path = vendor/astral-core
-	url = https://github.com/Online-Arcana/astral-chart-wheel.git
+	url = https://github.com/Online-Arcana/astrology-core.git
 [submodule "vendor/openai-schema"]
 	path = vendor/openai-schema
 	url = https://github.com/kitty-crow/openai-schema.git
